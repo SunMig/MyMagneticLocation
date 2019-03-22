@@ -66,7 +66,8 @@ public class HybridLocationClass {
                     //Log.d(TAG," "+geoList.size());
                 }
                 //Log.d(TAG," "+geoList.size());
-                hybridLocationListener.onLocation(magMatchResults_x,magMatchResults_y,z);//监听
+                hybridLocationListener.onLocation(magMatchResults_x,magMatchResults_y,z);
+                //监听的频率需要改，程序的稳定性也需要改，明天说
             }
         }
 
