@@ -27,7 +27,9 @@ public class MagneticThread extends Thread {
     private String fingertext;
     private MagneticLocListener magneticLocListener;
     private double result_x,result_y;
-    private boolean MagIsRun=false;
+    private boolean MagIsRun=false,IsRun=true;
+    private float Azimuth=0f,sum_deta_azimuth=0f,Azimuth_for=0f,Azimuth_current=0f;
+    private List<Float> Azimuth_list=new ArrayList<Float>();
     //构造函数
     public MagneticThread(String string) {
         this.fingertext=string;
@@ -96,48 +98,58 @@ public class MagneticThread extends Thread {
         super.run();
         Log.d(TAG,"is running...");
         while(MagIsRun){
-            if(testlist.size()==100){
-                TestArray=listToArray(testlist);
+// 通过方位角变化增加量判断是否发生了转向，由于变化的过程短暂，判断也比较难
+// 判断是否发生了转向
+            float sum_deta=sum_deta_azimuth;
+            if (sum_deta > 175 && sum_deta < 200 &&IsRun) {
+                Log.d(TAG, "sum_deta_azimuth is: " + sum_deta_azimuth);
+                Collections.reverse(fingerList);
+                FingerArray = listToArray_1(fingerList);
+                IsRun=false;
+            }
+            if (testlist.size() == 100) {
+                TestArray = listToArray(testlist);
                 //计算各段的dtw距离
-                Log.d(TAG,"TestArray "+TestArray.length);
-                List dtwlist=new ArrayList();
-                List dtwlist_1=new ArrayList();
-                for(int i=0;i+100<FingerArray.length;i+=10){
+                Log.d(TAG, "TestArray " + TestArray.length);
+                List dtwlist = new ArrayList();//用于存放一次计算的DTW距离
+                List dtwlist_1 = new ArrayList();//用于复制
+                //判断方向
+                for (int i = 0; i + 100 < FingerArray.length; i += 10) {
                     double[] seg_finger = Arrays.copyOfRange(FingerArray, i, i + 100);
-                    double d=dtw(seg_finger, TestArray);
+                    double d = dtw(seg_finger, TestArray);
                     dtwlist.add(d);
                 }
                 dtwlist_1.addAll(dtwlist);
                 Collections.sort(dtwlist_1);
-                int count=0;//这里的count与实际的索引有10倍的关系，因为上述步长是10
-                for(int i=0;i<dtwlist.size();i++){
-                    if(dtwlist_1.get(0).equals(dtwlist.get(i))){
-                        count=i;
+                int count = 0;//这里的count与实际的索引有10倍的关系，因为上述步长是10
+                for (int i = 0; i < dtwlist.size(); i++) {
+                    if (dtwlist_1.get(0).equals(dtwlist.get(i))) {
+                        count = i;
                     }
                 }
-                //DtwDistance=listToArray(dtwlist_1);//3.22对集合进行操作
-                //找最小距离的下标
-//            double[] DtwDistance_copy=Arrays.copyOf(DtwDistance,DtwDistance.length);
-//            Arrays.sort(DtwDistance_copy);
-//            for(int i=0;i<DtwDistance_copy.length;i++){
-//                if(DtwDistance[i]==DtwDistance_copy[0]){
-//                    count=i;
-//                }
-//            }
-                count=count*10;
-                //找到下标之后，取坐标，取最小值点的前后1秒
-                int iter=count-20;
-                double sum_x=0;double sum_y=0;
-                for(int i=iter;i<count+20;i++){
-                    FingerPoint fps=fingerList.get(i);
-                    sum_x=sum_x+fps.getMPoint().x;
-                    sum_y=sum_y+fps.getMPoint().y;
+                //最小距离索引值
+                count = count * 10;
+                int iter;
+                //加入坐标索引太小，取前后一秒的数据就会出错，因为iter-20会小于零
+                if (count < 20 || count == 0) {
+                    iter = 0;
+                } else {
+                    //count>0时，找到下标之后，取坐标，取最小值点的前后1秒
+                    iter = count - 20;
+                }
+                //取前后一秒的坐标值平均值
+                double sum_x = 0;
+                double sum_y = 0;
+                for (int i = iter; i < count + 20; i++) {
+                    FingerPoint fps = fingerList.get(i);
+                    sum_x = sum_x + fps.getMPoint().x;
+                    sum_y = sum_y + fps.getMPoint().y;
                 }
                 //坐标数据放在接口上
-                result_x=sum_x/40;
-                result_y=sum_y/40;
-                magneticLocListener.onLocation(result_x,result_y);
-                Log.d(TAG,"X IS "+result_x);
+                result_x = sum_x / 40;
+                result_y = sum_y / 40;
+                magneticLocListener.onLocation(result_x, result_y);
+                Log.d(TAG, "X IS " + result_x);
                 //线程休眠一秒
                 try {
                     Thread.sleep(1000);
@@ -145,15 +157,28 @@ public class MagneticThread extends Thread {
                     e.printStackTrace();
                 }
             }
-
         }
-
     }
     //接收数据传感器的数据
     public void ListReceive(List list){
         this.testList=new CopyOnWriteArrayList<>(list);
         testlist=new CopyOnWriteArrayList<>(testList);
         //Log.d(TAG,""+testlist.size());
+    }
+    //接收方位角数据
+    public void Azimuth_receive(float azimuth){
+        this.Azimuth=azimuth;
+        Azimuth_list.add(0,Azimuth);
+        if(Azimuth_list.size()>=5){
+            Azimuth_list.remove(0);
+            Azimuth_list.add(4,Azimuth);
+            Log.d(TAG,"Azimuth is "+Azimuth);
+            Azimuth_for= (float) Azimuth_list.get(0);
+            Azimuth_current=Azimuth_list.get(4);
+            sum_deta_azimuth=Azimuth_current-Azimuth_for;
+            //Log.d(TAG,"sum_deta_azimuth is: "+sum_deta_azimuth);
+
+        }
     }
     //dtw算法过程
     public double dtw(double a[],float b[]){
