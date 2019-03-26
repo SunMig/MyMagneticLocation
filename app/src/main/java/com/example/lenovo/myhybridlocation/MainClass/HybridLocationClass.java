@@ -66,8 +66,8 @@ public class HybridLocationClass {
                     //Log.d(TAG," "+geoList.size());
                 }
                 //Log.d(TAG," "+geoList.size());
-                //监听频率可以考虑更改下，然后是一些闪退的问题...3.22
-                hybridLocationListener.onLocation(magMatchResults_x,magMatchResults_y,z);//监听
+                hybridLocationListener.onLocation(magMatchResults_x,magMatchResults_y,z);
+                //监听的频率需要改，程序的稳定性也需要改，明天说
             }
         }
 
