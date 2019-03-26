@@ -100,6 +100,8 @@ public class MagneticThread extends Thread {
         while(MagIsRun){
 // 通过方位角变化增加量判断是否发生了转向，由于变化的过程短暂，判断也比较难
 // 判断是否发生了转向
+
+            //为啥提交不了
             float sum_deta=sum_deta_azimuth;
             if (sum_deta > 175 && sum_deta < 200 &&IsRun) {
                 Log.d(TAG, "sum_deta_azimuth is: " + sum_deta_azimuth);
